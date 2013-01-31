@@ -9,7 +9,6 @@
 #ifndef MAILBOX_H
 #define MAILBOX_H
 
-typedef u32 mbox_msg_t;
 struct mailbox;
 
 typedef int __bitwise mailbox_irq_t;
@@ -27,9 +26,6 @@ struct mailbox_msg {
 	_msg.pdata = (void *)_pdata; \
 	_msg.size = _size; \
 }
-
-#define MAILBOX_FILL_HEADER_MSG(_msg, _header) \
-	MAILBOX_FILL_MSG(_msg, _header, NULL, 0);
 
 int mailbox_msg_send(struct mailbox *, struct mailbox_msg *msg);
 

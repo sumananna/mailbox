@@ -428,7 +428,8 @@ int sm_interrupt_dsp(struct bridge_dev_context *dev_context, u16 mb_val)
 		dsp_clock_enable_all(dev_context->dsp_per_clks);
 	}
 
-	MAILBOX_FILL_HEADER_MSG(msg, mb_val);
+	temp = mb_val;
+	MAILBOX_FILL_MSG(msg, 0, temp, 0);
 	status = mailbox_msg_send(dev_context->mbox, &msg);
 
 	if (status) {

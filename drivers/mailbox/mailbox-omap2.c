@@ -19,7 +19,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/platform_data/mailbox-omap.h>
 
-#include <plat/mailbox.h>
+#include "omap-mbox.h"
 
 #define MAILBOX_REVISION		0x000
 #define MAILBOX_MESSAGE(m)		(0x040 + 4 * (m))
@@ -61,9 +61,6 @@ struct omap_mbox2_priv {
 	unsigned long irqdisable;
 	u32 intr_type;
 };
-
-static void omap2_mbox_enable_irq(struct omap_mbox *mbox,
-				  omap_mbox_type_t irq);
 
 static inline unsigned int mbox_read_reg(size_t ofs)
 {
@@ -125,8 +122,7 @@ static int omap2_mbox_fifo_full(struct omap_mbox *mbox)
 }
 
 /* Mailbox IRQ handle functions */
-static void omap2_mbox_enable_irq(struct omap_mbox *mbox,
-		omap_mbox_type_t irq)
+static void omap2_mbox_enable_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 l, bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -136,8 +132,7 @@ static void omap2_mbox_enable_irq(struct omap_mbox *mbox,
 	mbox_write_reg(l, p->irqenable);
 }
 
-static void omap2_mbox_disable_irq(struct omap_mbox *mbox,
-		omap_mbox_type_t irq)
+static void omap2_mbox_disable_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -148,8 +143,7 @@ static void omap2_mbox_disable_irq(struct omap_mbox *mbox,
 	mbox_write_reg(bit, p->irqdisable);
 }
 
-static void omap2_mbox_ack_irq(struct omap_mbox *mbox,
-		omap_mbox_type_t irq)
+static void omap2_mbox_ack_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -160,8 +154,7 @@ static void omap2_mbox_ack_irq(struct omap_mbox *mbox,
 	mbox_read_reg(p->irqstatus);
 }
 
-static int omap2_mbox_is_irq(struct omap_mbox *mbox,
-		omap_mbox_type_t irq)
+static int omap2_mbox_is_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -325,9 +318,9 @@ static int omap2_mbox_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver omap2_mbox_driver = {
-	.probe = omap2_mbox_probe,
-	.remove = omap2_mbox_remove,
-	.driver = {
+	.probe	= omap2_mbox_probe,
+	.remove	= omap2_mbox_remove,
+	.driver	= {
 		.name = "omap-mailbox",
 	},
 };

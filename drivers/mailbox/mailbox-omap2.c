@@ -63,9 +63,6 @@ struct omap_mbox2_priv {
 	u32 data;
 };
 
-static void omap2_mbox_enable_irq(struct mailbox *mbox,
-		mailbox_type_t irq);
-
 static inline unsigned int mbox_read_reg(size_t ofs)
 {
 	return __raw_readl(mbox_base + ofs);
@@ -138,8 +135,7 @@ static int omap2_mbox_poll_for_space(struct mailbox *mbox)
 }
 
 /* Mailbox IRQ handle functions */
-static void omap2_mbox_enable_irq(struct mailbox *mbox,
-		mailbox_type_t irq)
+static void omap2_mbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 l, bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -149,8 +145,7 @@ static void omap2_mbox_enable_irq(struct mailbox *mbox,
 	mbox_write_reg(l, p->irqenable);
 }
 
-static void omap2_mbox_disable_irq(struct mailbox *mbox,
-		mailbox_type_t irq)
+static void omap2_mbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -161,8 +156,7 @@ static void omap2_mbox_disable_irq(struct mailbox *mbox,
 	mbox_write_reg(bit, p->irqdisable);
 }
 
-static void omap2_mbox_ack_irq(struct mailbox *mbox,
-		mailbox_type_t irq)
+static void omap2_mbox_ack_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -173,8 +167,7 @@ static void omap2_mbox_ack_irq(struct mailbox *mbox,
 	mbox_read_reg(p->irqstatus);
 }
 
-static int omap2_mbox_is_irq(struct mailbox *mbox,
-		mailbox_type_t irq)
+static int omap2_mbox_is_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 	struct omap_mbox2_priv *p = mbox->priv;
 	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
@@ -221,7 +214,6 @@ static void omap2_mbox_restore_ctx(struct mailbox *mbox)
 }
 
 static struct mailbox_ops omap2_mbox_ops = {
-	.type		= MBOX_HW_FIFO2_TYPE,
 	.startup	= omap2_mbox_startup,
 	.shutdown	= omap2_mbox_shutdown,
 	.read		= omap2_mbox_fifo_read,

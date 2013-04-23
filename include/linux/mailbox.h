@@ -42,13 +42,4 @@ int mailbox_msg_send_no_irq(struct mailbox *, struct mailbox_msg *msg);
 struct mailbox *mailbox_get(const char *, struct notifier_block *nb);
 void mailbox_put(struct mailbox *mbox, struct notifier_block *nb);
 
-/*
- * Temporary exported functions to maintain TI DSP/Bridge functionality.
- * These will be deprecated, new clients should not use these.
- */
-void mailbox_save_ctx(struct mailbox *mbox);
-void mailbox_restore_ctx(struct mailbox *mbox);
-void mailbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq);
-void mailbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq);
-
 #endif /* MAILBOX_H */

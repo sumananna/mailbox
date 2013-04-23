@@ -230,87 +230,6 @@ out:
 }
 EXPORT_SYMBOL(mailbox_msg_send_no_irq);
 
-/**
- * mailbox_save_ctx: save the context of a mailbox
- * @mbox: handle to the acquired mailbox
- *
- * This allows a client (controlling a remote) to request a mailbox to
- * save its context when it is powering down the remote.
- *
- * NOTE: This will be deprecated, new clients should not use this.
- *       The same feature can be enabled through runtime_pm enablement
- *	 of mailbox.
- */
-void mailbox_save_ctx(struct mailbox *mbox)
-{
-	if (!mbox->ops->save_ctx) {
-		dev_err(mbox->dev, "%s:\tno save\n", __func__);
-		return;
-	}
-
-	mbox->ops->save_ctx(mbox);
-}
-EXPORT_SYMBOL(mailbox_save_ctx);
-
-/**
- * mailbox_restore_ctx: restore the context of a mailbox
- * @mbox: handle to the acquired mailbox
- *
- * This allows a client (controlling a remote) to request a mailbox to
- * restore its context after restoring the remote, so that it can
- * communicate with the remote as it would normally.
- *
- * NOTE: This will be deprecated, new clients should not use this.
- *       The same feature can be enabled through runtime_pm enablement
- *	 of mailbox.
- */
-void mailbox_restore_ctx(struct mailbox *mbox)
-{
-	if (!mbox->ops->restore_ctx) {
-		dev_err(mbox->dev, "%s:\tno restore\n", __func__);
-		return;
-	}
-
-	mbox->ops->restore_ctx(mbox);
-}
-EXPORT_SYMBOL(mailbox_restore_ctx);
-
-/**
- * mailbox_enable_irq: enable a specific mailbox Rx or Tx interrupt source
- * @mbox: handle to the acquired mailbox
- * @irq: interrupt type associated with either the Rx or Tx
- *
- * This allows a client (having its own shared memory communication protocal
- * with the remote) to request a mailbox to enable a particular interrupt
- * signal source of the mailbox, as part of its communication state machine.
- *
- * NOTE: This will be deprecated, new clients should not use this. It is
- *	 being exported for TI DSP/Bridge driver.
- */
-void mailbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq)
-{
-	mbox->ops->enable_irq(mbox, irq);
-}
-EXPORT_SYMBOL(mailbox_enable_irq);
-
-/**
- * mailbox_disable_irq: disable a specific mailbox Rx or Tx interrupt source
- * @mbox: handle to the acquired mailbox
- * @irq: interrupt type associated with either the Rx or Tx
- *
- * This allows a client (having its own shared memory communication protocal
- * with the remote) to request a mailbox to disable a particular interrupt
- * signal source of the mailbox, as part of its communication state machine.
- *
- * NOTE: This will be deprecated, new clients should not use this. It is
- *	 being exported for TI DSP/Bridge driver.
- */
-void mailbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq)
-{
-	mbox->ops->disable_irq(mbox, irq);
-}
-EXPORT_SYMBOL(mailbox_disable_irq);
-
 /*
  * This is the tasklet function in which all the buffered messages are
  * sent until the h/w transport is busy again. The tasklet is scheduled
@@ -327,7 +246,7 @@ static void mbox_tx_tasklet(unsigned long tx_data)
 
 	while (kfifo_len(&mq->fifo)) {
 		if (__mbox_poll_for_space(mbox)) {
-			mailbox_enable_irq(mbox, IRQ_TX);
+			mbox->ops->enable_irq(mbox, IRQ_TX);
 			break;
 		}
 
@@ -379,7 +298,7 @@ static void mbox_rx_work(struct work_struct *work)
 		spin_lock_irq(&mq->lock);
 		if (mq->full) {
 			mq->full = false;
-			mailbox_enable_irq(mbox, IRQ_RX);
+			mbox->ops->enable_irq(mbox, IRQ_RX);
 		}
 		spin_unlock_irq(&mq->lock);
 	}
@@ -392,7 +311,7 @@ static void mbox_rx_work(struct work_struct *work)
  */
 static void __mbox_tx_interrupt(struct mailbox *mbox)
 {
-	mailbox_disable_irq(mbox, IRQ_TX);
+	mbox->ops->disable_irq(mbox, IRQ_TX);
 	ack_mbox_irq(mbox, IRQ_TX);
 	tasklet_schedule(&mbox->txq->tasklet);
 }
@@ -412,7 +331,7 @@ static void __mbox_rx_interrupt(struct mailbox *mbox)
 	while (!mbox_empty(mbox)) {
 		if (unlikely(kfifo_avail(&mq->fifo) <
 				(sizeof(msg) + CONFIG_MBOX_DATA_SIZE))) {
-			mailbox_disable_irq(mbox, IRQ_RX);
+			mbox->ops->disable_irq(mbox, IRQ_RX);
 			mq->full = true;
 			goto nomem;
 		}
@@ -537,7 +456,7 @@ static int mailbox_startup(struct mailbox *mbox)
 			goto fail_request_irq;
 		}
 
-		mailbox_enable_irq(mbox, IRQ_RX);
+		mbox->ops->enable_irq(mbox, IRQ_RX);
 	}
 	mutex_unlock(&mbox_configured_lock);
 	return 0;
@@ -564,7 +483,7 @@ static void mailbox_fini(struct mailbox *mbox)
 	mutex_lock(&mbox_configured_lock);
 
 	if (!--mbox->use_count) {
-		mailbox_disable_irq(mbox, IRQ_RX);
+		mbox->ops->disable_irq(mbox, IRQ_RX);
 		free_irq(mbox->irq, mbox);
 		tasklet_kill(&mbox->txq->tasklet);
 		flush_work(&mbox->rxq->work);

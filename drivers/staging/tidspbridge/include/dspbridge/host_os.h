@@ -41,7 +41,7 @@
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/mailbox.h>
+#include <linux/mailbox-omap.h>
 #include <linux/pagemap.h>
 #include <asm/cacheflush.h>
 #include <linux/dma-mapping.h>

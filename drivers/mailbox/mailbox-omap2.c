@@ -228,6 +228,85 @@ static struct mailbox_ops omap2_mbox_ops = {
 	.restore_ctx	= omap2_mbox_restore_ctx,
 };
 
+/**
+ * mailbox_save_ctx: save the context of a mailbox
+ * @mbox: handle to the acquired mailbox
+ *
+ * This allows a client (controlling a remote) to request a mailbox to
+ * save its context when it is powering down the remote.
+ *
+ * NOTE: This will be deprecated, the same can be achieved through the
+ *       runtime_pm ops of the OMAP mailbox driver.
+ */
+void mailbox_save_ctx(struct mailbox *mbox)
+{
+	if (!mbox->ops->save_ctx) {
+		dev_err(mbox->dev, "%s:\tno save\n", __func__);
+		return;
+	}
+
+	mbox->ops->save_ctx(mbox);
+}
+EXPORT_SYMBOL(mailbox_save_ctx);
+
+/**
+ * mailbox_restore_ctx: restore the context of a mailbox
+ * @mbox: handle to the acquired mailbox
+ *
+ * This allows a client (controlling a remote) to request a mailbox to
+ * restore its context after restoring the remote, so that it can
+ * communicate with the remote as it would normally.
+ *
+ * NOTE: This will be deprecated, the same can be achieved through the
+ *       runtime_pm ops of the OMAP mailbox driver.
+ */
+void mailbox_restore_ctx(struct mailbox *mbox)
+{
+	if (!mbox->ops->restore_ctx) {
+		dev_err(mbox->dev, "%s:\tno restore\n", __func__);
+		return;
+	}
+
+	mbox->ops->restore_ctx(mbox);
+}
+EXPORT_SYMBOL(mailbox_restore_ctx);
+
+/**
+ * mailbox_enable_irq: enable a specific mailbox Rx or Tx interrupt source
+ * @mbox: handle to the acquired mailbox
+ * @irq: interrupt type associated with either the Rx or Tx
+ *
+ * This allows a client (having its own shared memory communication protocal
+ * with the remote) to request a mailbox to enable a particular interrupt
+ * signal source of the mailbox, as part of its communication state machine.
+ *
+ * NOTE: This will be deprecated, new OMAP clients should not use this. It is
+ *	 being exported for TI DSP/Bridge driver.
+ */
+void mailbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq)
+{
+	mbox->ops->enable_irq(mbox, irq);
+}
+EXPORT_SYMBOL(mailbox_enable_irq);
+
+/**
+ * mailbox_disable_irq: disable a specific mailbox Rx or Tx interrupt source
+ * @mbox: handle to the acquired mailbox
+ * @irq: interrupt type associated with either the Rx or Tx
+ *
+ * This allows a client (having its own shared memory communication protocal
+ * with the remote) to request a mailbox to disable a particular interrupt
+ * signal source of the mailbox, as part of its communication state machine.
+ *
+ * NOTE: This will be deprecated, new OMAP clients should not use this. It is
+ *	 being exported for TI DSP/Bridge driver.
+ */
+void mailbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq)
+{
+	mbox->ops->disable_irq(mbox, irq);
+}
+EXPORT_SYMBOL(mailbox_disable_irq);
+
 static int omap2_mbox_probe(struct platform_device *pdev)
 {
 	struct resource *mem;

@@ -429,7 +429,7 @@ int sm_interrupt_dsp(struct bridge_dev_context *dev_context, u16 mb_val)
 	}
 
 	temp = mb_val;
-	MAILBOX_FILL_MSG(msg, 0, temp, 0);
+	MAILBOX_FILL_MSG(msg, temp, 0);
 	status = mailbox_msg_send(dev_context->mbox, &msg);
 
 	if (status) {

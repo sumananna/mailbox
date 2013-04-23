@@ -99,7 +99,7 @@ static void omap2_mbox_fifo_read(struct mailbox *mbox, struct mailbox_msg *msg)
 	struct omap_mbox2_priv *priv = mbox->priv;
 	struct omap_mbox2_fifo *fifo = &priv->rx_fifo;
 	priv->data = mbox_read_reg(fifo->msg);
-	MAILBOX_FILL_MSG((*msg), 0, priv->data, 0);
+	MAILBOX_FILL_MSG((*msg), priv->data, 0);
 }
 
 static int omap2_mbox_fifo_write(struct mailbox *mbox, struct mailbox_msg *msg)

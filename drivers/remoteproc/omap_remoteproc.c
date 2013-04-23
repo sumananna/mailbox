@@ -99,7 +99,7 @@ static void omap_rproc_kick(struct rproc *rproc, int vqid)
 	int ret;
 
 	/* send the index of the triggered virtqueue in the mailbox payload */
-	MAILBOX_FILL_MSG(msg, 0, vqid, 0);
+	MAILBOX_FILL_MSG(msg, vqid, 0);
 	ret = mailbox_msg_send(oproc->mbox, &msg);
 	if (ret)
 		dev_err(dev, "mailbox_msg_send failed: %d\n", ret);
@@ -141,7 +141,7 @@ static int omap_rproc_start(struct rproc *rproc)
 	 * Note that the reply will _not_ arrive immediately: this message
 	 * will wait in the mailbox fifo until the remote processor is booted.
 	 */
-	MAILBOX_FILL_MSG(msg, 0, RP_MBOX_ECHO_REQUEST, 0);
+	MAILBOX_FILL_MSG(msg, RP_MBOX_ECHO_REQUEST, 0);
 	ret = mailbox_msg_send(oproc->mbox, &msg);
 	if (ret) {
 		dev_err(dev, "mailbox_get failed: %d\n", ret);

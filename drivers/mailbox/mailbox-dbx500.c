@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/irqdomain.h>
+#include <linux/mailbox-dbx500.h>
 
 #include "mailbox_internal.h"
 
@@ -174,6 +175,7 @@ static int dbx500_mbox_write(struct mailbox *mbox,
 {
 	int j;
 	struct dbx500_mbox_priv *priv = (struct dbx500_mbox_priv *)mbox->priv;
+	struct dbx500_packet *pkt = msg->pdata;
 
 	if (msg->size && !msg->pdata)
 		return -EINVAL;
@@ -183,11 +185,11 @@ static int dbx500_mbox_write(struct mailbox *mbox,
 
 	/* write header */
 	if (priv->header_size)
-		writeb(msg->header, tcdm_mem_base + priv->tx_header_offset);
+		writeb(pkt->header, tcdm_mem_base + priv->tx_header_offset);
 
 	/* write data */
 	for (j = 0; j < msg->size; j++)
-		writeb(((unsigned char *)msg->pdata)[j],
+		writeb(((unsigned char *)pkt->pdata)[j],
 				tcdm_mem_base + priv->tx_offset + j);
 
 	/* send event */
@@ -199,9 +201,10 @@ static int dbx500_mbox_write(struct mailbox *mbox,
 static void dbx500_mbox_read(struct mailbox *mbox, struct mailbox_msg *msg)
 {
 	struct dbx500_mbox_priv *priv = (struct dbx500_mbox_priv *)mbox->priv;
+	struct dbx500_packet *pkt = msg->pdata;
 
-	msg->header = readb(tcdm_mem_base + priv->rx_header_offset);
-	msg->pdata = (unsigned char *)(tcdm_mem_base + priv->rx_offset);
+	pkt->header = readb(tcdm_mem_base + priv->rx_header_offset);
+	pkt->pdata = (unsigned char *)(tcdm_mem_base + priv->rx_offset);
 
 	msg->size = priv->rx_size;
 	priv->empty_flag = false;

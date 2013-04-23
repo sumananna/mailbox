@@ -60,7 +60,7 @@ static void omap1_mbox_fifo_read(struct mailbox *mbox, struct mailbox_msg *msg)
 
 	priv->data = mbox_read_reg(fifo->data);
 	priv->data |= ((u32) mbox_read_reg(fifo->cmd)) << 16;
-	MAILBOX_FILL_MSG((*msg), 0, priv->data, 0);
+	MAILBOX_FILL_MSG((*msg), priv->data, 0);
 	priv->empty_flag = false;
 }
 

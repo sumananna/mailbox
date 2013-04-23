@@ -20,20 +20,14 @@ typedef int __bitwise mailbox_irq_t;
 /**
  * struct mailbox_msg - Main message structure used by clients
  * @size:	Size of the message data contained in pdata.
- * @header:	A header element, if any, for a message. Usage
- *		of this header element is upto the respective
- *		driver implementation (TODO: this is somewhat
- *		driver-specific, eliminate this)
  * @pdata:	Null terminated array of links.
  */
 struct mailbox_msg {
 	int		size;
-	u32		header;
 	void		*pdata;
 };
 
-#define MAILBOX_FILL_MSG(_msg, _header, _pdata, _size) { \
-	_msg.header = _header; \
+#define MAILBOX_FILL_MSG(_msg, _pdata, _size) { \
 	_msg.pdata = (void *)_pdata; \
 	_msg.size = _size; \
 }

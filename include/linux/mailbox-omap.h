@@ -19,21 +19,21 @@
 
 /* These need not be implemented for OMAP1 */
 #ifdef CONFIG_ARCH_OMAP2PLUS
-void mailbox_save_ctx(struct mailbox *mbox);
-void mailbox_restore_ctx(struct mailbox *mbox);
-void mailbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq);
-void mailbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq);
+void mailbox_omap_save_ctx(struct mailbox *mbox);
+void mailbox_omap_restore_ctx(struct mailbox *mbox);
+void mailbox_omap_enable_irq(struct mailbox *mbox, mailbox_irq_t irq);
+void mailbox_omap_disable_irq(struct mailbox *mbox, mailbox_irq_t irq);
 #else
-static inline void mailbox_save_ctx(struct mailbox *mbox)
+static inline void mailbox_omap_save_ctx(struct mailbox *mbox)
 {
 }
-static inline void mailbox_restore_ctx(struct mailbox *mbox)
+static inline void mailbox_omap_restore_ctx(struct mailbox *mbox)
 {
 }
-static inline void mailbox_enable_irq(struct mailbox *mbox, mailbox_irq_t irq)
+static inline void mailbox_omap_enable_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 }
-static inline void mailbox_disable_irq(struct mailbox *mbox, mailbox_irq_t irq)
+static inline void mailbox_omap_disable_irq(struct mailbox *mbox, mailbox_irq_t irq)
 {
 }
 #endif

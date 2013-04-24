@@ -417,7 +417,7 @@ int sm_interrupt_dsp(struct bridge_dev_context *dev_context, u16 mb_val)
 				OMAP3430_IVA2_MOD, OMAP3430_CM_CLKEN_PLL);
 
 		/* Restore mailbox settings */
-		mailbox_restore_ctx(dev_context->mbox);
+		mailbox_omap_restore_ctx(dev_context->mbox);
 
 		/* Access MMU SYS CONFIG register to generate a short wakeup */
 		temp = readl(resources->dmmu_base + 0x10);

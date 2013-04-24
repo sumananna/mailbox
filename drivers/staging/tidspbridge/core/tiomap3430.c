@@ -677,7 +677,7 @@ static int bridge_brd_stop(struct bridge_dev_context *dev_ctxt)
 	}
 	/* Disable the mailbox interrupts */
 	if (dev_context->mbox) {
-		mailbox_disable_irq(dev_context->mbox, IRQ_RX);
+		mailbox_omap_disable_irq(dev_context->mbox, IRQ_RX);
 		mailbox_put(dev_context->mbox, &dsp_mbox_notifier);
 		dev_context->mbox = NULL;
 	}

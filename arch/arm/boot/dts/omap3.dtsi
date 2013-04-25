@@ -303,6 +303,17 @@
 			ti,hwmods = "mcbsp5";
 		};
 
+		mailbox: mailbox@48094000 {
+			compatible = "ti,omap44xx-mailbox";
+			reg = <0x48094000 0x200>;
+			interrupts = <26>;
+			ti,hwmods = "mailbox";
+			ti,mbox-intr-type = <0>;
+			#ti,mbox-data-cells = <4>;
+			ti,mbox-names = "dsp";
+			ti,mbox-data = <0 1 0 0>;
+		};
+
 		timer1: timer@48318000 {
 			compatible = "ti,omap2-timer";
 			reg = <0x48318000 0x400>;

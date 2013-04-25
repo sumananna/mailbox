@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/pm_runtime.h>
@@ -330,40 +331,117 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 	struct mailbox **list, *mbox, *mboxblk;
 	struct omap_mbox2_priv *priv, *privblk;
 	struct omap_mbox_pdata *pdata = pdev->dev.platform_data;
-	struct omap_mbox_dev_info *info;
-	int i;
+	struct omap_mbox_dev_info *info, *of_info = NULL;
+	struct device_node *node = pdev->dev.of_node;
+	int i, j;
+	u32 info_count = 0, intr_type = 0;
+	u32 dlen, dsize;
+	u32 *tmp;
+	const __be32 *mbox_data;
 
-	if (!pdata || !pdata->info_cnt || !pdata->info) {
+	if (!node && (!pdata || !pdata->info_cnt || !pdata->info)) {
 		pr_err("%s: platform not supported\n", __func__);
 		return -ENODEV;
 	}
 
+	if (node) {
+		if (of_property_read_u32(node, "ti,mbox-intr-type",
+								&intr_type)) {
+			dev_err(&pdev->dev,
+				"no ti,mbox-intr-type configuration found\n");
+			return -ENODEV;
+		}
+		if (intr_type != 0 && intr_type != 1) {
+			dev_err(&pdev->dev,
+					"invalid ti,mbox-intr-type value\n");
+			return -EINVAL;
+		}
+
+		if (of_property_read_u32(node, "#ti,mbox-data-cells", &dsize)) {
+			dev_err(&pdev->dev,
+				"no #ti,mbox-data-cells configuration found\n");
+			return -ENODEV;
+		}
+		if (dsize != 4) {
+			dev_err(&pdev->dev,
+				"invalid size for #ti,mbox-data-cells\n");
+			return -EINVAL;
+		}
+
+		info_count = of_property_count_strings(node, "ti,mbox-names");
+		if (!info_count) {
+			dev_err(&pdev->dev, "no mbox devices found\n");
+			return -ENODEV;
+		}
+
+		mbox_data = of_get_property(node, "ti,mbox-data", &dlen);
+		if (!mbox_data) {
+			dev_err(&pdev->dev, "no mbox device data found\n");
+			return -ENODEV;
+		}
+		dlen /= sizeof(dsize);
+		if (dlen != dsize * info_count) {
+			dev_err(&pdev->dev, "mbox device data is truncated\n");
+			return -ENODEV;
+		}
+
+		of_info = kzalloc(info_count * sizeof(*of_info), GFP_KERNEL);
+		if (!of_info)
+			return -ENOMEM;
+
+		i = 0;
+		while (i < info_count) {
+			info = of_info + i;
+			if (of_property_read_string_index(node,
+					"ti,mbox-names", i,  &info->name)) {
+				dev_err(&pdev->dev,
+					"mbox_name [%d] read failed\n", i);
+				ret = -ENODEV;
+				goto free_of;
+			}
+
+			tmp = &info->tx_id;
+			for (j = 0; j < dsize; j++) {
+				tmp[j] = of_read_number(
+						mbox_data + j + (i * dsize), 1);
+			}
+			i++;
+		}
+	}
+
+	if (!node) { /* non-DT device creation */
+		info_count = pdata->info_cnt;
+		info = pdata->info;
+		intr_type = pdata->intr_type;
+	} else {
+		info = of_info;
+	}
+
 	/* allocate one extra for marking end of list */
-	list = kzalloc((pdata->info_cnt + 1) * sizeof(*list), GFP_KERNEL);
+	list = kzalloc((info_count + 1) * sizeof(*list), GFP_KERNEL);
 	if (!list)
 		return -ENOMEM;
 
-	mboxblk = mbox = kzalloc(pdata->info_cnt * sizeof(*mbox), GFP_KERNEL);
+	mboxblk = mbox = kzalloc(info_count * sizeof(*mbox), GFP_KERNEL);
 	if (!mboxblk) {
 		ret = -ENOMEM;
 		goto free_list;
 	}
 
-	privblk = priv = kzalloc(pdata->info_cnt * sizeof(*priv), GFP_KERNEL);
+	privblk = priv = kzalloc(info_count * sizeof(*priv), GFP_KERNEL);
 	if (!privblk) {
 		ret = -ENOMEM;
 		goto free_mboxblk;
 	}
 
-	info = pdata->info;
-	for (i = 0; i < pdata->info_cnt; i++, info++, priv++) {
+	for (i = 0; i < info_count; i++, info++, priv++) {
 		priv->tx_fifo.msg = MAILBOX_MESSAGE(info->tx_id);
 		priv->tx_fifo.fifo_stat = MAILBOX_FIFOSTATUS(info->tx_id);
 		priv->rx_fifo.msg =  MAILBOX_MESSAGE(info->rx_id);
 		priv->rx_fifo.msg_stat =  MAILBOX_MSGSTATUS(info->rx_id);
 		priv->notfull_bit = MAILBOX_IRQ_NOTFULL(info->tx_id);
 		priv->newmsg_bit = MAILBOX_IRQ_NEWMSG(info->rx_id);
-		if (pdata->intr_type) {
+		if (intr_type) {
 			priv->irqenable = OMAP4_MAILBOX_IRQENABLE(info->usr_id);
 			priv->irqstatus = OMAP4_MAILBOX_IRQSTATUS(info->usr_id);
 			priv->irqdisable =
@@ -373,7 +451,7 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 			priv->irqstatus = MAILBOX_IRQSTATUS(info->usr_id);
 			priv->irqdisable = MAILBOX_IRQENABLE(info->usr_id);
 		}
-		priv->intr_type = pdata->intr_type;
+		priv->intr_type = intr_type;
 
 		mbox->priv = priv;
 		mbox->name = info->name;
@@ -406,6 +484,7 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 		goto free_device;
 	platform_set_drvdata(pdev, mdevice);
 
+	kfree(of_info);
 	return 0;
 
 free_device:
@@ -418,6 +497,8 @@ free_mboxblk:
 	kfree(mboxblk);
 free_list:
 	kfree(list);
+free_of:
+	kfree(of_info);
 	return ret;
 }
 
@@ -440,11 +521,23 @@ static int omap2_mbox_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id omap_mailbox_of_match[] = {
+	{ .compatible = "ti,omap2420-mailbox" },
+	{ .compatible = "ti,omap2430-mailbox" },
+	{ .compatible = "ti,omap3xxx-mailbox" },
+	{ .compatible = "ti,omap44xx-mailbox" },
+	{ .compatible = "ti,am33xx-mailbox" },
+	{ .compatible = "ti,omap54xx-mailbox" },
+	{ /* end */ },
+};
+MODULE_DEVICE_TABLE(of, omap_mailbox_of_match);
+
 static struct platform_driver omap2_mbox_driver = {
 	.probe	= omap2_mbox_probe,
 	.remove	= omap2_mbox_remove,
 	.driver	= {
 		.name = "omap-mailbox",
+		.of_match_table = omap_mailbox_of_match,
 	},
 };
 

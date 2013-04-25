@@ -1,0 +1,41 @@
+OMAP Mailbox Driver
+
+Required properties:
+- compatible:		Should be one of the following,
+			    "ti,omap2420-mailbox" for OMAP2420
+			    "ti,omap2430-mailbox" for OMAP2430
+			    "ti,omap3xxx-mailbox" for OMAP3430, OMAP3630
+			    "ti,am33xx-mailbox"   for AM33xx SoCs
+			    "ti,omap44xx-mailbox" for OMAP4430, OMAP4460, OMAP4470
+			    "ti,omap54xx-mailbox" for OMAP5430, OMAP5432
+- reg:			Contains the mailbox register address range (base address
+			and length)
+- interrupts: 		Contains the interrupt information for the mailbox
+			device. The format is being dependent on which interrupt
+			controller the OMAP device uses
+- ti,hwmods:		Name of the hwmod associated with the mailbox
+- ti,mbox-intr-type:	Type of interrupt configuration registers used while
+			programming mailbox queue interrupts. Should be one of
+			the following values:
+			    0 - Same registers for setting & clearing interrupts
+			    1 - Different registers for setting & clearing
+				interrupts
+- #ti,mbox-data-cells:	Cell size for describing a mailbox
+			(currently should be 4)
+- ti,mbox-names:	Array of the names of the mailboxes
+- ti,mbox-data:		Mailbox descriptor data private to each mailbox
+
+
+Example:
+
+/* OMAP4 */
+mailbox: mailbox@4a0f4000 {
+	compatible = "ti,omap44xx-mailbox";
+	reg = <0x4a0f4000 0x200>;
+	interrupts = <0 47 0x4>;
+	ti,hwmods = "mailbox";
+	ti,mbox-intr-type = <1>;
+	#ti,mbox-data-cells = <4>
+	ti,mbox-names = "mbox-ipu", "mbox-dsp";
+	ti,mbox-data = <0 1 0 0>, <3 2 0 0>;
+};

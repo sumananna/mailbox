@@ -172,6 +172,7 @@ static int omap1_mbox_probe(struct platform_device *pdev)
 {
 	struct resource *mem;
 	int ret;
+	struct mailbox_device *mdevice;
 	struct mailbox **list;
 
 	list = omap1_mboxes;
@@ -186,19 +187,34 @@ static int omap1_mbox_probe(struct platform_device *pdev)
 	if (!mbox_base)
 		return -ENOMEM;
 
-	ret = mailbox_register(&pdev->dev, list);
-	if (ret) {
-		iounmap(mbox_base);
-		return ret;
+	mdevice = mailbox_device_alloc(&pdev->dev, NULL);
+	if (!mdevice) {
+		ret = -ENOMEM;
+		goto unmap_mbox;
 	}
 
+	ret = mailbox_register(mdevice, list);
+	if (ret)
+		goto free_device;
+	platform_set_drvdata(pdev, mdevice);
 	return 0;
+
+free_device:
+	mailbox_device_free(mdevice);
+unmap_mbox:
+	iounmap(mbox_base);
+	return ret;
 }
 
 static int omap1_mbox_remove(struct platform_device *pdev)
 {
-	mailbox_unregister();
+	struct mailbox_device *mdevice = platform_get_drvdata(pdev);
+
+	mailbox_unregister(mdevice);
+	mailbox_device_free(mdevice);
 	iounmap(mbox_base);
+	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
 

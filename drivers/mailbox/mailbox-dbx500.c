@@ -483,6 +483,7 @@ static int dbx500_mbox_probe(struct platform_device *pdev)
 	int ret, i, irq;
 	u32 legacy_offset = 0;
 	u32 upap_offset = 0, upap_size = PRCM_MBOX_LEGACY_SIZE;
+	struct mailbox_device *mdevice;
 	struct mailbox **list;
 	struct dbx500_plat_data *pdata = dev_get_platdata(&pdev->dev);
 	struct device_node *np = pdev->dev.of_node;
@@ -602,19 +603,31 @@ static int dbx500_mbox_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = mailbox_register(&pdev->dev, list);
+	mdevice = mailbox_device_alloc(&pdev->dev, NULL);
+	if (!mdevice) {
+		ret = -ENOMEM;
+		goto irq_free;
+	}
+
+	ret = mailbox_register(mdevice, list);
 irq_free:
 	if (ret)
 		free_irq(irq, NULL);
-
+	else
+		platform_set_drvdata(pdev, mdevice);
 out:
 	return ret;
 }
 
 static int dbx500_mbox_remove(struct platform_device *pdev)
 {
-	mailbox_unregister();
+	struct mailbox_device *mdevice = platform_get_drvdata(pdev);
+
+	mailbox_unregister(mdevice);
+	mailbox_device_free(mdevice);
 	iounmap(mbox_base);
+	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
 

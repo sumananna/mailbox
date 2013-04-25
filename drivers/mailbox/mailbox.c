@@ -34,12 +34,9 @@
 
 #include "mailbox_internal.h"
 
-/* global list of mailboxes registered with the mailbox core */
-static struct mailbox **mboxes;
-
-/* mailbox h/w block configuration variables */
-static int mbox_configured;
-static DEFINE_MUTEX(mbox_configured_lock);
+/* global variables for the mailbox devices */
+static DEFINE_MUTEX(mailbox_devices_lock);
+static LIST_HEAD(mailbox_devices);
 
 /*
  * default size for the fifos, configured through kernel menuconfig
@@ -422,18 +419,28 @@ static int mailbox_startup(struct mailbox *mbox)
 {
 	int ret = 0;
 	struct mailbox_queue *mq;
+	struct mailbox_device *mdevice = mbox->parent;
 
-	mutex_lock(&mbox_configured_lock);
-	if (!mbox_configured++) {
-		if (likely(mbox->ops->startup)) {
-			ret = mbox->ops->startup(mbox);
+	mutex_lock(&mdevice->cfg_lock);
+	if (!mdevice->cfg_count++) {
+		if (mdevice->dops && mdevice->dops->startup) {
+			ret = mdevice->dops->startup(mdevice, NULL);
 			if (unlikely(ret))
 				goto fail_startup;
-		} else
-			goto fail_startup;
+		} else {
+			pr_warn("nothing to do for mailbox device startup\n");
+		}
 	}
 
 	if (!mbox->use_count++) {
+		if (likely(mbox->ops->startup)) {
+			ret = mbox->ops->startup(mbox);
+			if (unlikely(ret))
+				goto fail_mbox_startup;
+		} else {
+			pr_warn("nothing to do for mailbox startup\n");
+		}
+
 		mq = mbox_queue_alloc(mbox, NULL, mbox_tx_tasklet);
 		if (!mq) {
 			ret = -ENOMEM;
@@ -458,7 +465,7 @@ static int mailbox_startup(struct mailbox *mbox)
 
 		mbox->ops->enable_irq(mbox, IRQ_RX);
 	}
-	mutex_unlock(&mbox_configured_lock);
+	mutex_unlock(&mdevice->cfg_lock);
 	return 0;
 
 fail_request_irq:
@@ -469,9 +476,12 @@ fail_alloc_txq:
 	if (mbox->ops->shutdown)
 		mbox->ops->shutdown(mbox);
 	mbox->use_count--;
+fail_mbox_startup:
+	if (mdevice->dops && mdevice->dops->shutdown)
+		mdevice->dops->shutdown(mdevice);
 fail_startup:
-	mbox_configured--;
-	mutex_unlock(&mbox_configured_lock);
+	mdevice->cfg_count--;
+	mutex_unlock(&mdevice->cfg_lock);
 	return ret;
 }
 
@@ -480,8 +490,9 @@ fail_startup:
  */
 static void mailbox_fini(struct mailbox *mbox)
 {
-	mutex_lock(&mbox_configured_lock);
+	struct mailbox_device *mdevice = mbox->parent;
 
+	mutex_lock(&mdevice->cfg_lock);
 	if (!--mbox->use_count) {
 		mbox->ops->disable_irq(mbox, IRQ_RX);
 		free_irq(mbox->irq, mbox);
@@ -489,14 +500,40 @@ static void mailbox_fini(struct mailbox *mbox)
 		flush_work(&mbox->rxq->work);
 		mbox_queue_free(mbox->txq);
 		mbox_queue_free(mbox->rxq);
-	}
-
-	if (likely(mbox->ops->shutdown)) {
-		if (!--mbox_configured)
+		if (likely(mbox->ops->shutdown))
 			mbox->ops->shutdown(mbox);
 	}
 
-	mutex_unlock(&mbox_configured_lock);
+	if (!--mdevice->cfg_count) {
+		if (mdevice->dops && mdevice->dops->shutdown)
+			mdevice->dops->shutdown(mdevice);
+	}
+
+	mutex_unlock(&mdevice->cfg_lock);
+}
+
+/*
+ * Helper function to find a mailbox. It is currently assumed that all the
+ * mailbox names are unique among all the mailbox devices. This can be
+ * easily extended if only a particular mailbox device is to searched.
+ */
+static struct mailbox *mailbox_device_find(struct mailbox_device *mdevice,
+					   const char *mbox_name)
+{
+	struct mailbox *_mbox, *mbox = NULL;
+	struct mailbox **mboxes = mdevice->mboxes;
+	int i;
+
+	if (!mboxes)
+		return NULL;
+
+	for (i = 0; (_mbox = mboxes[i]); i++) {
+		if (!strcmp(_mbox->name, mbox_name)) {
+			mbox = _mbox;
+			break;
+		}
+	}
+	return mbox;
 }
 
 /**
@@ -518,18 +555,17 @@ static void mailbox_fini(struct mailbox *mbox)
  */
 struct mailbox *mailbox_get(const char *name, struct notifier_block *nb)
 {
-	struct mailbox *_mbox, *mbox = NULL;
-	int i, ret;
+	struct mailbox *mbox = NULL;
+	struct mailbox_device *mdevice;
+	int ret;
 
-	if (!mboxes)
-		return ERR_PTR(-EINVAL);
-
-	for (i = 0; (_mbox = mboxes[i]); i++) {
-		if (!strcmp(_mbox->name, name)) {
-			mbox = _mbox;
+	mutex_lock(&mailbox_devices_lock);
+	list_for_each_entry(mdevice, &mailbox_devices, next) {
+		mbox = mailbox_device_find(mdevice, name);
+		if (mbox)
 			break;
-		}
 	}
+	mutex_unlock(&mailbox_devices_lock);
 
 	if (!mbox)
 		return ERR_PTR(-ENOENT);
@@ -567,11 +603,65 @@ void mailbox_put(struct mailbox *mbox, struct notifier_block *nb)
 }
 EXPORT_SYMBOL(mailbox_put);
 
+/**
+ * mailbox_device_alloc() - allocate a mailbox device object
+ * @dev: reference device pointer of the h/w mailbox block
+ * @dops: h/w mailbox device specific function ops
+ *
+ * This API is called by a mailbox driver implementor to create a common
+ * mailbox device object. The mailbox core maintains the list of all the
+ * mailbox devices. The returned handle needs to be used while registering
+ * all the mailboxes within the h/w block with the mailbox core.
+ *
+ * Returns a mailbox device handle on success, or NULL otherwise
+ */
+struct mailbox_device *mailbox_device_alloc(struct device *dev,
+					    struct mailbox_device_ops *dops)
+{
+	struct mailbox_device *device;
+
+	if (!dev)
+		return NULL;
+
+	device = kzalloc(sizeof(*device), GFP_KERNEL);
+	if (!device)
+		return NULL;
+
+	mutex_init(&device->cfg_lock);
+	device->dev = dev;
+	device->dops = dops;
+	mutex_lock(&mailbox_devices_lock);
+	list_add(&device->next, &mailbox_devices);
+	mutex_unlock(&mailbox_devices_lock);
+
+	return device;
+}
+EXPORT_SYMBOL(mailbox_device_alloc);
+
+/**
+ * mailbox_device_free() - free a  mailbox device object
+ * @device: mailbox device object to be freed
+ *
+ * This API is called by a mailbox driver implementor to delete the common
+ * mailbox device object, it had created. This device is freed and removed
+ * from the list of all mailbox devices that the mailbox core maintains.
+ */
+void mailbox_device_free(struct mailbox_device *device)
+{
+	mutex_lock(&mailbox_devices_lock);
+	list_del(&device->next);
+	mutex_unlock(&mailbox_devices_lock);
+
+	kfree(device);
+}
+EXPORT_SYMBOL(mailbox_device_free);
+
 static struct class mailbox_class = { .name = "mbox", };
 
 /**
  * mailbox_register() - register the list of mailboxes
- * @parent: reference to the parent device pointer containing the mailboxes
+ * @device: mailbox device handle that the mailboxes need to be registered
+ *	    with
  * @list: list of mailboxes associated with the mailbox device
  *
  * This API is to be called by individual mailbox driver implementations
@@ -583,19 +673,24 @@ static struct class mailbox_class = { .name = "mbox", };
  *
  * Return 0 on success, or a failure code otherwise
  */
-int mailbox_register(struct device *parent, struct mailbox **list)
+int mailbox_register(struct mailbox_device *device, struct mailbox **list)
 {
 	int ret;
 	int i;
+	struct mailbox **mboxes;
 
-	mboxes = list;
-	if (!mboxes)
+	if (!device || !list)
 		return -EINVAL;
 
+	if (device->mboxes)
+		return -EBUSY;
+
+	mboxes = device->mboxes = list;
 	for (i = 0; mboxes[i]; i++) {
 		struct mailbox *mbox = mboxes[i];
+		mbox->parent = device;
 		mbox->dev = device_create(&mailbox_class,
-				parent, 0, mbox, "%s", mbox->name);
+				device->dev, 0, mbox, "%s", mbox->name);
 		if (IS_ERR(mbox->dev)) {
 			ret = PTR_ERR(mbox->dev);
 			goto err_out;
@@ -608,33 +703,37 @@ int mailbox_register(struct device *parent, struct mailbox **list)
 err_out:
 	while (i--)
 		device_unregister(mboxes[i]->dev);
+	device->mboxes = NULL;
 	return ret;
 }
 EXPORT_SYMBOL(mailbox_register);
 
 /**
  * mailbox_unregister() - unregister the list of mailboxes
+ * @device: parent mailbox device handle containing the mailboxes that need
+ *	    to be unregistered
  *
  * This API is to be called by individual mailbox driver implementations
  * for unregistering the set of mailboxes contained in a h/w communication
  * block. Once unregistered, these mailboxes are not available for any
  * client users/drivers.
  *
- * FIXME: This API currently assumes that there is only a single instance
- * of the h/w communication block.
- *
  * Return 0 on success, or a failure code otherwise
  */
-int mailbox_unregister(void)
+int mailbox_unregister(struct mailbox_device *device)
 {
 	int i;
+	struct mailbox **mboxes;
 
-	if (!mboxes)
+	if (!device || !device->mboxes)
 		return -EINVAL;
 
-	for (i = 0; mboxes[i]; i++)
+	mboxes = device->mboxes;
+	for (i = 0; mboxes[i]; i++) {
 		device_unregister(mboxes[i]->dev);
-	mboxes = NULL;
+		mboxes[i]->parent = NULL;
+	}
+	device->mboxes = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(mailbox_unregister);

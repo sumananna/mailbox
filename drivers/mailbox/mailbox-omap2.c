@@ -76,13 +76,7 @@ static inline void mbox_write_reg(u32 val, size_t ofs)
 /* Mailbox H/W preparations */
 static int omap2_mbox_startup(struct mailbox *mbox)
 {
-	u32 l;
-
-	pm_runtime_enable(mbox->dev->parent);
 	pm_runtime_get_sync(mbox->dev->parent);
-
-	l = mbox_read_reg(MAILBOX_REVISION);
-	pr_debug("omap mailbox rev %d.%d\n", (l & 0xf0) >> 4, (l & 0x0f));
 
 	return 0;
 }
@@ -90,7 +84,6 @@ static int omap2_mbox_startup(struct mailbox *mbox)
 static void omap2_mbox_shutdown(struct mailbox *mbox)
 {
 	pm_runtime_put_sync(mbox->dev->parent);
-	pm_runtime_disable(mbox->dev->parent);
 }
 
 /* Mailbox FIFO handle functions */
@@ -228,6 +221,28 @@ static struct mailbox_ops omap2_mbox_ops = {
 	.restore_ctx	= omap2_mbox_restore_ctx,
 };
 
+static int omap2_mbox_device_startup(struct mailbox_device *mdevice, void *data)
+{
+	u32 l;
+
+	pm_runtime_enable(mdevice->dev);
+
+	l = mbox_read_reg(MAILBOX_REVISION);
+	pr_info("omap mailbox rev 0x%x\n", l);
+
+	return 0;
+}
+
+static void omap2_mbox_device_shutdown(struct mailbox_device *mdevice)
+{
+	pm_runtime_disable(mdevice->dev);
+}
+
+static struct mailbox_device_ops omap2_mbox_device_ops = {
+	.startup	= omap2_mbox_device_startup,
+	.shutdown	= omap2_mbox_device_shutdown,
+};
+
 /**
  * mailbox_omap_save_ctx: save the context of a mailbox
  * @mbox: handle to the acquired mailbox
@@ -311,6 +326,7 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 {
 	struct resource *mem;
 	int ret;
+	struct mailbox_device *mdevice;
 	struct mailbox **list, *mbox, *mboxblk;
 	struct omap_mbox2_priv *priv, *privblk;
 	struct omap_mbox_pdata *pdata = pdev->dev.platform_data;
@@ -379,13 +395,21 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 		goto free_privblk;
 	}
 
-	ret = mailbox_register(&pdev->dev, list);
-	if (ret)
+	mdevice = mailbox_device_alloc(&pdev->dev, &omap2_mbox_device_ops);
+	if (!mdevice) {
+		ret = -ENOMEM;
 		goto unmap_mbox;
-	platform_set_drvdata(pdev, list);
+	}
+
+	ret = mailbox_register(mdevice, list);
+	if (ret)
+		goto free_device;
+	platform_set_drvdata(pdev, mdevice);
 
 	return 0;
 
+free_device:
+	kfree(mdevice);
 unmap_mbox:
 	iounmap(mbox_base);
 free_privblk:
@@ -399,16 +423,18 @@ free_list:
 
 static int omap2_mbox_remove(struct platform_device *pdev)
 {
+	struct mailbox_device *mdevice = platform_get_drvdata(pdev);
 	struct omap_mbox2_priv *privblk;
-	struct mailbox **list = platform_get_drvdata(pdev);
+	struct mailbox **list = mdevice->mboxes;
 	struct mailbox *mboxblk = list[0];
 
 	privblk = mboxblk->priv;
-	mailbox_unregister();
+	mailbox_unregister(mdevice);
 	iounmap(mbox_base);
 	kfree(privblk);
 	kfree(mboxblk);
 	kfree(list);
+	mailbox_device_free(mdevice);
 	platform_set_drvdata(pdev, NULL);
 
 	return 0;

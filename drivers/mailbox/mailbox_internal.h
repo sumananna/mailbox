@@ -123,6 +123,7 @@ struct mailbox_queue {
  *	  not be touched by the mailbox core
  * @use_count: number of current references to the mailbox, useful in
  *	  controlling the mailbox state
+ * @parent: back reference to the containing parent mailbox device object
  * @notifier: notifier chain of clients, to which a received message is
  *	  communicated
  */
@@ -136,6 +137,7 @@ struct mailbox {
 	struct device		*dev;
 	void			*priv;
 	int			use_count;
+	struct mailbox_device	*parent;
 	struct blocking_notifier_head	notifier;
 };
 
@@ -146,7 +148,7 @@ void mailbox_init_seq(struct mailbox *);
  * mailbox objects registration and de-registration functions with the
  * mailbox core.
  */
-int mailbox_register(struct device *parent, struct mailbox **);
-int mailbox_unregister(void);
+int mailbox_register(struct mailbox_device *device, struct mailbox **);
+int mailbox_unregister(struct mailbox_device *device);
 
 #endif /* MAILBOX_INTERNAL_H */

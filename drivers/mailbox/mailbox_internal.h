@@ -79,7 +79,6 @@ struct mailbox_ops {
 /**
  * struct mailbox_queue - A queue object used for buffering messages
  * @lock: a spinlock providing synchronization in atomic context
- * @mlock: a mutex providing synchronization in thread context
  * @fifo: a kfifo object for buffering the messages. The size of the kfifo is
  *	  is currently configured per driver implementation at build time using
  *	  kernel menu configuration. The usage of the kfifo depends on whether
@@ -96,7 +95,6 @@ struct mailbox_ops {
  */
 struct mailbox_queue {
 	spinlock_t		lock;
-	struct mutex		mlock;
 	struct kfifo		fifo;
 	struct work_struct	work;
 	struct tasklet_struct	tasklet;
@@ -124,8 +122,18 @@ struct mailbox_queue {
  * @use_count: number of current references to the mailbox, useful in
  *	  controlling the mailbox state
  * @parent: back reference to the containing parent mailbox device object
+ * @atomic: flag to indicate if mailbox supports only atomic contexts, the
+ *	    messages are not buffered in the mailbox core and is delivered to
+ *	    the clients directly
+ * @shareable: flag to indicate if the mailbox can be shared between multiple
+ *		clients simultaneously. Multiple clients are supported through
+ *		the notifier chains, and the same received message is delivered
+ *		to each client
  * @notifier: notifier chain of clients, to which a received message is
- *	  communicated
+ *	  communicated. Is used when atomic property is set to false
+ * @anotifier: atomic notifier chain of clients, messages are communicated
+ *		to clients in atomic context. Is used only if the atomic
+ *		property is set for a mailbox
  */
 struct mailbox {
 	const char		*name;
@@ -138,7 +146,10 @@ struct mailbox {
 	void			*priv;
 	int			use_count;
 	struct mailbox_device	*parent;
+	bool 			atomic;
+	bool			shareable;
 	struct blocking_notifier_head	notifier;
+	struct atomic_notifier_head	anotifier;
 };
 
 /* TODO: remove this, unused function */

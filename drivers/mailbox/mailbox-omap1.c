@@ -178,6 +178,8 @@ static int omap1_mbox_probe(struct platform_device *pdev)
 	list = omap1_mboxes;
 	list[0]->irq = platform_get_irq_byname(pdev, "dsp");
 	list[0]->irq_flags = IRQF_SHARED;
+	list[0]->atomic = false;
+	list[0]->shareable = true;
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!mem)

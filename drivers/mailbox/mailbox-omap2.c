@@ -458,6 +458,8 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 		mbox->ops = &omap2_mbox_ops;
 		mbox->irq = platform_get_irq(pdev, info->irq_id);
 		mbox->irq_flags = IRQF_SHARED;
+		mbox->atomic = false;
+		mbox->shareable = true;
 		list[i] = mbox++;
 	}
 

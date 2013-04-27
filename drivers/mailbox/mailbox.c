@@ -102,7 +102,7 @@ int mailbox_msg_send(struct mailbox *mbox, struct mailbox_msg *msg)
 	struct mailbox_queue *mq = mbox->txq;
 	int ret = 0, len;
 
-	mutex_lock(&mq->mlock);
+	spin_lock_bh(&mq->lock);
 
 	if (kfifo_avail(&mq->fifo) < (sizeof(*msg) + msg->size)) {
 		ret = -ENOMEM;
@@ -126,7 +126,7 @@ int mailbox_msg_send(struct mailbox *mbox, struct mailbox_msg *msg)
 	tasklet_schedule(&mbox->txq->tasklet);
 
 out:
-	mutex_unlock(&mq->mlock);
+	spin_unlock_bh(&mq->lock);
 	return ret;
 }
 EXPORT_SYMBOL(mailbox_msg_send);
@@ -323,32 +323,41 @@ static void __mbox_rx_interrupt(struct mailbox *mbox)
 {
 	struct mailbox_queue *mq = mbox->rxq;
 	struct mailbox_msg msg;
+	bool atomic = mbox->atomic;
 	int len;
 
 	while (!mbox_empty(mbox)) {
-		if (unlikely(kfifo_avail(&mq->fifo) <
+		if (atomic) {
+			mbox_read(mbox, &msg);
+			atomic_notifier_call_chain(&mbox->anotifier, msg.size,
+                                                                (void *)&msg);
+		} else {
+			if (unlikely(kfifo_avail(&mq->fifo) <
 				(sizeof(msg) + CONFIG_MBOX_DATA_SIZE))) {
-			mbox->ops->disable_irq(mbox, IRQ_RX);
-			mq->full = true;
-			goto nomem;
-		}
+				mbox->ops->disable_irq(mbox, IRQ_RX);
+				mq->full = true;
+				goto nomem;
+			}
 
-		mbox_read(mbox, &msg);
+			mbox_read(mbox, &msg);
 
-		len = kfifo_in(&mq->fifo, (unsigned char *)&msg, sizeof(msg));
-		WARN_ON(len != sizeof(msg));
+			len = kfifo_in(&mq->fifo, (unsigned char *)&msg,
+								sizeof(msg));
+			WARN_ON(len != sizeof(msg));
 
-		if (msg.pdata && msg.size) {
-			len = kfifo_in(&mq->fifo, (unsigned char *)msg.pdata,
-					msg.size);
-			WARN_ON(len != msg.size);
+			if (msg.pdata && msg.size) {
+				len = kfifo_in(&mq->fifo,
+					(unsigned char *)msg.pdata, msg.size);
+				WARN_ON(len != msg.size);
+			}
 		}
 	}
 
 	/* no more messages in the fifo. clear IRQ source. */
 	ack_mbox_irq(mbox, IRQ_RX);
 nomem:
-	schedule_work(&mbox->rxq->work);
+	if (!atomic)
+		schedule_work(&mbox->rxq->work);
 }
 
 /*
@@ -385,7 +394,6 @@ static struct mailbox_queue *mbox_queue_alloc(struct mailbox *mbox,
 		return NULL;
 
 	spin_lock_init(&mq->lock);
-	mutex_init(&mq->mlock);
 
 	if (kfifo_alloc(&mq->fifo, mbox_kfifo_size, GFP_KERNEL))
 		goto error;
@@ -406,7 +414,8 @@ error:
  */
 static void mbox_queue_free(struct mailbox_queue *q)
 {
-	kfifo_free(&q->fifo);
+	if (q)
+		kfifo_free(&q->fifo);
 	kfree(q);
 }
 
@@ -448,13 +457,17 @@ static int mailbox_startup(struct mailbox *mbox)
 		}
 		mbox->txq = mq;
 
-		mq = mbox_queue_alloc(mbox, mbox_rx_work, NULL);
-		if (!mq) {
-			ret = -ENOMEM;
-			goto fail_alloc_rxq;
+		if (!mbox->atomic) {
+			mq = mbox_queue_alloc(mbox, mbox_rx_work, NULL);
+			if (!mq) {
+				ret = -ENOMEM;
+				goto fail_alloc_rxq;
+			}
+			mbox->rxq = mq;
+			mq->mbox = mbox;
+		} else {
+			mbox->rxq = NULL;
 		}
-		mbox->rxq = mq;
-		mq->mbox = mbox;
 		ret = request_irq(mbox->irq, mbox_interrupt,
 					mbox->irq_flags, mbox->name, mbox);
 		if (unlikely(ret)) {
@@ -491,15 +504,18 @@ fail_startup:
 static void mailbox_fini(struct mailbox *mbox)
 {
 	struct mailbox_device *mdevice = mbox->parent;
+	bool atomic = mbox->atomic;
 
 	mutex_lock(&mdevice->cfg_lock);
 	if (!--mbox->use_count) {
 		mbox->ops->disable_irq(mbox, IRQ_RX);
 		free_irq(mbox->irq, mbox);
 		tasklet_kill(&mbox->txq->tasklet);
-		flush_work(&mbox->rxq->work);
+		if (!atomic) {
+			flush_work(&mbox->rxq->work);
+			mbox_queue_free(mbox->rxq);
+		}
 		mbox_queue_free(mbox->txq);
-		mbox_queue_free(mbox->rxq);
 		if (likely(mbox->ops->shutdown))
 			mbox->ops->shutdown(mbox);
 	}
@@ -536,6 +552,30 @@ static struct mailbox *mailbox_device_find(struct mailbox_device *mdevice,
 	return mbox;
 }
 
+static void _mailbox_notifier_register(struct mailbox *mbox,
+				       struct notifier_block *nb)
+{
+	if (!nb)
+		return;
+
+	if (mbox->atomic)
+		atomic_notifier_chain_register(&mbox->anotifier, nb);
+	else
+		blocking_notifier_chain_register(&mbox->notifier, nb);
+}
+
+static void _mailbox_notifier_unregister(struct mailbox *mbox,
+					 struct notifier_block *nb)
+{
+	if (!nb)
+		return;
+
+	if (mbox->atomic)
+		atomic_notifier_chain_unregister(&mbox->anotifier, nb);
+	else
+		blocking_notifier_chain_unregister(&mbox->notifier, nb);
+}
+
 /**
  * mailbox_get() - acquire a mailbox
  * @name: name of the mailbox to acquire
@@ -570,12 +610,13 @@ struct mailbox *mailbox_get(const char *name, struct notifier_block *nb)
 	if (!mbox)
 		return ERR_PTR(-ENOENT);
 
-	if (nb)
-		blocking_notifier_chain_register(&mbox->notifier, nb);
+	if (!mbox->shareable && mbox->use_count)
+		return ERR_PTR(-EBUSY);
 
+	_mailbox_notifier_register(mbox, nb);
 	ret = mailbox_startup(mbox);
 	if (ret) {
-		blocking_notifier_chain_unregister(&mbox->notifier, nb);
+		_mailbox_notifier_unregister(mbox, nb);
 		return ERR_PTR(-ENODEV);
 	}
 
@@ -597,8 +638,7 @@ EXPORT_SYMBOL(mailbox_get);
  */
 void mailbox_put(struct mailbox *mbox, struct notifier_block *nb)
 {
-	if (nb)
-		blocking_notifier_chain_unregister(&mbox->notifier, nb);
+	_mailbox_notifier_unregister(mbox, nb);
 	mailbox_fini(mbox);
 }
 EXPORT_SYMBOL(mailbox_put);
@@ -697,6 +737,7 @@ int mailbox_register(struct mailbox_device *device, struct mailbox **list)
 		}
 
 		BLOCKING_INIT_NOTIFIER_HEAD(&mbox->notifier);
+		ATOMIC_INIT_NOTIFIER_HEAD(&mbox->anotifier);
 	}
 	return 0;
 

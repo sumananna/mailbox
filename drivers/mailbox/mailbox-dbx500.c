@@ -328,6 +328,8 @@ struct mailbox mbox0_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox0_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= true,
+	.shareable = false,
 };
 
 struct dbx500_mbox_priv mbox1_priv = {
@@ -347,6 +349,8 @@ struct mailbox mbox1_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox1_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct dbx500_mbox_priv mbox2_priv = {
@@ -366,6 +370,8 @@ struct mailbox mbox2_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox2_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct dbx500_mbox_priv mbox3_priv = {
@@ -385,6 +391,8 @@ struct mailbox mbox3_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox3_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct dbx500_mbox_priv mbox4_priv = {
@@ -404,6 +412,8 @@ struct mailbox mbox4_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox4_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct dbx500_mbox_priv mbox5_priv = {
@@ -423,6 +433,8 @@ struct mailbox mbox5_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox5_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct mailbox mbox6_info = {
@@ -430,6 +442,8 @@ struct mailbox mbox6_info = {
 	.id	= 6,
 	.ops	= &dbx500_mbox_ops,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct mailbox mbox7_info = {
@@ -437,6 +451,8 @@ struct mailbox mbox7_info = {
 	.id	= 7,
 	.ops	= &dbx500_mbox_ops,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 /* x540 mailbox definition */
@@ -456,6 +472,8 @@ struct mailbox mbox1_upap_info = {
 	.ops	= &dbx500_mbox_ops,
 	.priv	= &mbox1_upap_priv,
 	.irq_flags = IRQF_SHARED | IRQF_NO_SUSPEND,
+	.atomic	= false,
+	.shareable = false,
 };
 
 struct mailbox *db8500_mboxes[] = { &mbox0_info, &mbox1_info, &mbox2_info,

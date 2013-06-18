@@ -10,7 +10,7 @@
  * Tobi expansion board is manufactured by Gumstix Inc.
  */
 
-/include/ "omap3-overo.dtsi"
+#include "omap3-overo.dtsi"
 
 / {
 	model = "TI OMAP3 Gumstix Overo on Tobi";
@@ -20,7 +20,7 @@
 		compatible = "gpio-leds";
 		heartbeat {
 			label = "overo:red:gpio21";
-			gpios = <&gpio1 21 0>;
+			gpios = <&gpio1 21 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
 		};
 	};

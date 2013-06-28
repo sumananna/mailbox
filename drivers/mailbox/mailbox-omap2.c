@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/delay.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
@@ -245,6 +246,7 @@ static void omap2_mbox_shutdown(struct ipc_link *link)
 static int omap2_mbox_send_data(struct ipc_link *link, void *data)
 {
 	struct omap_mbox *mbox = link_to_omap_mbox(link);
+	mbox_msg_t msg;
 	int ret = -EBUSY;
 
 	if (!mbox)
@@ -253,6 +255,15 @@ static int omap2_mbox_send_data(struct ipc_link *link, void *data)
 	if (!omap2_mbox_fifo_full(mbox)) {
 		omap2_mbox_fifo_write(mbox, (mbox_msg_t)data);
 		ret = 0;
+	}
+
+	/*
+	 * Treat WkupM3 mailbox from AM335 specially,
+	 * read back the message since M3 cannot read it.
+	 */
+	if (!strcmp(link->link_name, "wkup_m3") && !ret) {
+		udelay(100);
+		msg = omap2_mbox_fifo_read(mbox);
 	}
 
 	/* always enable the interrupt */

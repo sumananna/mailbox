@@ -36,6 +36,8 @@
 #define MAILBOX_IRQ_NEWMSG(m)		(1 << (2 * (m)))
 #define MAILBOX_IRQ_NOTFULL(m)		(1 << (2 * (m) + 1))
 
+#define AM33X_MBOX_WKUPM3_USR		3
+
 #define MBOX_REG_SIZE			0x120
 
 #define OMAP4_MBOX_REG_SIZE		0x130
@@ -175,6 +177,57 @@ static int omap2_mbox_is_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
 	return (int)(enable & status & bit);
 }
 
+static void wkupm3_mbox_enable_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
+{
+	struct omap_mbox2_priv *p = mbox->priv;
+	u32 l, bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
+	unsigned long irqenable = ((irq == IRQ_RX) ?
+		OMAP4_MAILBOX_IRQENABLE(AM33X_MBOX_WKUPM3_USR) : p->irqenable);
+
+	l = mbox_read_reg(mbox->parent, irqenable);
+	l |= bit;
+	mbox_write_reg(mbox->parent, l, irqenable);
+}
+
+static void wkupm3_mbox_disable_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
+{
+	struct omap_mbox2_priv *p = mbox->priv;
+	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
+	unsigned long irqdisable = ((irq == IRQ_RX) ?
+		OMAP4_MAILBOX_IRQENABLE_CLR(AM33X_MBOX_WKUPM3_USR) : p->irqdisable);
+
+	mbox_write_reg(mbox->parent, bit, irqdisable);
+}
+
+static void wkupm3_mbox_ack_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
+{
+	struct omap_mbox2_priv *p = mbox->priv;
+	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
+	unsigned long irqstatus = ((irq == IRQ_RX) ?
+		OMAP4_MAILBOX_IRQSTATUS(AM33X_MBOX_WKUPM3_USR) : p->irqstatus);
+
+	mbox_write_reg(mbox->parent, bit, irqstatus);
+
+	/* Flush posted write for irq status to avoid spurious interrupts */
+	mbox_read_reg(mbox->parent, irqstatus);
+}
+
+static int wkupm3_mbox_is_irq(struct omap_mbox *mbox, omap_mbox_irq_t irq)
+{
+	struct omap_mbox2_priv *p = mbox->priv;
+	u32 bit = (irq == IRQ_TX) ? p->notfull_bit : p->newmsg_bit;
+	u32 enable, status;
+
+	/* WkupM3 mailbox does not use a receive queue */
+	if (irq == IRQ_RX)
+		return 0;
+
+	enable = mbox_read_reg(mbox->parent, p->irqenable);
+	status = mbox_read_reg(mbox->parent, p->irqstatus);
+
+	return (int)(enable & status & bit);
+}
+
 static void omap2_mbox_save_ctx(struct omap_mbox *mbox)
 {
 	int i;
@@ -260,6 +313,35 @@ static int omap2_mbox_send_data(struct ipc_link *link, void *data)
 	return ret;
 }
 
+static int wkupm3_mbox_send_data(struct ipc_link *link, void *data)
+{
+	struct omap_mbox *mbox = link_to_omap_mbox(link);
+	mbox_msg_t msg;
+	int ret = -EBUSY;
+
+	if (!mbox)
+		return -EINVAL;
+
+	if (strcmp(mbox->link.link_name, "wkup_m3"))
+		return omap2_mbox_send_data(link, data);
+
+	if (!omap2_mbox_fifo_full(mbox)) {
+		wkupm3_mbox_enable_irq(mbox, IRQ_RX);
+		omap2_mbox_fifo_write(mbox, (mbox_msg_t)data);
+		wkupm3_mbox_disable_irq(mbox, IRQ_RX);
+		ret = 0;
+	}
+
+	if (!ret) {
+		msg = omap2_mbox_fifo_read(mbox);
+		wkupm3_mbox_ack_irq(mbox, IRQ_RX);
+	}
+
+	/* always enable the interrupt */
+	wkupm3_mbox_enable_irq(mbox, IRQ_TX);
+	return ret;
+}
+
 static struct ipc_link_ops omap2_link_ops = {
 	.startup	= omap2_mbox_startup,
 	.send_data	= omap2_mbox_send_data,
@@ -273,6 +355,23 @@ static struct omap_mbox_ops omap2_mbox_ops = {
 	.disable_irq	= omap2_mbox_disable_irq,
 	.ack_irq	= omap2_mbox_ack_irq,
 	.is_irq		= omap2_mbox_is_irq,
+	.save_ctx	= omap2_mbox_save_ctx,
+	.restore_ctx	= omap2_mbox_restore_ctx,
+};
+
+static struct ipc_link_ops am33x_wkupm3_link_ops = {
+	.startup	= omap2_mbox_startup,
+	.send_data	= wkupm3_mbox_send_data,
+	.shutdown	= omap2_mbox_shutdown,
+};
+
+static struct omap_mbox_ops wkupm3_mbox_ops = {
+	.fifo_read	= omap2_mbox_fifo_read,
+	.fifo_empty	= omap2_mbox_fifo_empty,
+	.enable_irq	= wkupm3_mbox_enable_irq,
+	.disable_irq	= wkupm3_mbox_disable_irq,
+	.ack_irq	= wkupm3_mbox_ack_irq,
+	.is_irq		= wkupm3_mbox_is_irq,
 	.save_ctx	= omap2_mbox_save_ctx,
 	.restore_ctx	= omap2_mbox_restore_ctx,
 };
@@ -440,13 +539,18 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 
 		mbox->priv = priv;
 		mbox->parent = mdev;
-		mbox->ops = &omap2_mbox_ops;
 		mbox->irq = platform_get_irq(pdev, info->irq_id);
 		if (mbox->irq < 0) {
 			ret = mbox->irq;
 			goto free_privblk;
 		}
 		snprintf(mbox->link.link_name, 16, "%s", info->name);
+		if (!strcmp(mbox->link.link_name, "wkup_m3")) {
+			mbox->ops = &wkupm3_mbox_ops;
+			mdev->controller.ops = &am33x_wkupm3_link_ops;
+		} else {
+			mbox->ops = &omap2_mbox_ops;
+		}
 		list[i] = mbox++;
 		links[i] = &list[i]->link;
 	}
@@ -470,7 +574,8 @@ static int omap2_mbox_probe(struct platform_device *pdev)
 	mdev->mboxes = list;
 	/* OMAP does not have a Tx-Done IRQ, but rather a Tx-Ready IRQ */
 	mdev->controller.txdone_irq = true;
-	mdev->controller.ops = &omap2_link_ops;
+	if (!mdev->controller.ops)
+		mdev->controller.ops = &omap2_link_ops;
 	mdev->controller.links = links;
 	snprintf(mdev->controller.controller_name, 16, "omap2");
 	ret = omap_mbox_register(mdev);

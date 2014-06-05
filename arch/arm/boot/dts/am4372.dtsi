@@ -162,15 +162,10 @@
 		};
 
 		mailbox: mailbox@480C8000 {
-			compatible = "ti,omap4-mailbox";
+			compatible = "ti,am4372-mailbox";
 			reg = <0x480C8000 0x200>;
 			interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
 			ti,hwmods = "mailbox";
-			ti,mbox-num-users = <4>;
-			ti,mbox-num-fifos = <8>;
-			ti,mbox-names = "wkup_m3";
-			ti,mbox-data = <0 0 0 0>;
-			status = "disabled";
 		};
 
 		timer1: timer@44e31000 {

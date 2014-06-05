@@ -166,6 +166,10 @@
 			reg = <0x480C8000 0x200>;
 			interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
 			ti,hwmods = "mailbox";
+			mbox_wkupm3: wkup_m3 {
+				ti,mbox-tx = <0 0 0>;
+				ti,mbox-rx = <0 0 3>;
+			};
 		};
 
 		timer1: timer@44e31000 {

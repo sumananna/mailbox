@@ -654,6 +654,7 @@
 			reg = <0x4a0f4000 0x200>;
 			interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
 			ti,hwmods = "mailbox";
+			#mbox-cells = <1>;
 			mbox_ipu: mbox_ipu {
 				ti,mbox-tx = <0 0 0>;
 				ti,mbox-rx = <1 0 0>;

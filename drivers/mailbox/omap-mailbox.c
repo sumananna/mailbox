@@ -676,6 +676,28 @@ static const struct of_device_id omap_mailbox_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, omap_mailbox_of_match);
 
+static struct mbox_chan *omap_mbox_of_xlate(struct mbox_controller *controller,
+					    const struct of_phandle_args *sp)
+{
+	phandle phandle = sp->args[0];
+	struct device_node *node;
+	struct omap_mbox_device *mdev;
+	struct omap_mbox *mbox;
+
+	node = of_find_node_by_phandle(phandle);
+	if (!node) {
+		pr_err("could not find node phandle 0x%x\n", phandle);
+		return NULL;
+	}
+
+	mdev = container_of(controller, struct omap_mbox_device, controller);
+	if (WARN_ON(!mdev))
+		return NULL;
+
+	mbox = omap_mbox_device_find(mdev, node->name);
+	return mbox ? mbox->chan : NULL;
+}
+
 static int omap_mbox_probe(struct platform_device *pdev)
 {
 	struct resource *mem;
@@ -835,6 +857,7 @@ static int omap_mbox_probe(struct platform_device *pdev)
 	mdev->controller.ops = &omap_mbox_chan_ops;
 	mdev->controller.chans = chnls;
 	mdev->controller.num_chans = info_count;
+	mdev->controller.of_xlate = omap_mbox_of_xlate;
 	ret = omap_mbox_register(mdev);
 	if (ret)
 		return ret;

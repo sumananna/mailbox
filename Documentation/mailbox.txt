@@ -1,0 +1,107 @@
+		The Common Mailbox Framework
+		Jassi Brar <jaswinder.singh@linaro.org>
+
+ This document aims to help developers write client and controller
+drivers for the API. But before we start, let us note that the
+client (especially) and controller drivers are likely going to be
+very platform specific because the remote firmware is likely to be
+proprietary and implement non-standard protocol. So even if two
+platforms employ, say, PL320 controller, the client drivers can't
+be shared across them. Even the PL320 driver might need to accomodate
+some platform specific quirks. So the API is meant mainly to avoid
+similar copies of code written for each platform.
+ Some of the choices made during implementation are the result of this
+peculiarity of this "common" framework.
+
+
+
+	Part 1 - Controller Driver (See include/linux/mailbox_controller.h)
+
+ Allocate mbox_controller and the array of mbox_chan.
+Populate mbox_chan_ops, except peek_data() all are mandatory.
+The controller driver might know a message has been consumed
+by the remote by getting an IRQ or polling some hardware flag
+or it can never know (the client knows by way of the protocol).
+The method in order of preference is IRQ -> Poll -> None, which
+the controller driver should set via 'txdone_irq' or 'txdone_poll'
+or neither.
+
+
+	Part 2 - Client Driver (See include/linux/mailbox_client.h)
+
+ The client might want to operate in blocking mode (synchronously
+send a message through before returning) or non-blocking/async mode (submit
+a message and a callback function to the API and return immediately).
+
+
+static struct mbox_chan *ch_async, *ch_blk;
+static struct mbox_client cl_async, cl_blk;
+static struct completion c_aysnc;
+
+/*
+ * This is the handler for data received from remote. The behaviour is purely
+ * dependent upon the protocol. This is just an example.
+ */
+static void message_from_remote(struct mbox_client *cl, void *mssg)
+{
+	if (cl == &cl_async) {
+		if (is_an_ack(mssg)) {
+			/* An ACK to our last sample sent */
+			return; /* Or do something else here */
+		} else { /* A new message from remote */
+			queue_req(mssg);
+		}
+	} else {
+		/* Remote f/w sends only ACK packets on this channel */
+		return;
+	}
+}
+
+static void sample_sent(struct mbox_client *cl, void *mssg, int r)
+{
+	complete(&c_aysnc);
+}
+
+static int client_demo(struct platform_device *pdev)
+{
+	/* The controller already knows async_pkt and sync_pkt */
+	struct async_pkt ap;
+	struct sync_pkt sp;
+
+	/* Populate non-blocking mode client */
+	cl_async.dev = &pdev->dev;
+	cl_async.chan_name = "send_sample"; /* Mainly to send random samples */
+	cl_async.rx_callback = message_from_remote;
+	cl_async.tx_done = sample_sent;
+	cl_async.tx_block = false;
+	cl_async.tx_tout = 0; /* doesn't matter here */
+	cl_async.knows_txdone = false; /* depending upon protocol */
+	init_completion(&c_aysnc);
+
+	/* Populate blocking mode client */
+	cl_blk.dev = &pdev->dev;
+	cl_blk.chan_name = "send_request"; /* Ask remote to do stuff */
+	cl_blk.rx_callback = message_from_remote;
+	cl_blk.tx_done = NULL; /* operate in blocking mode */
+	cl_blk.tx_block = true;
+	cl_blk.tx_tout = 500; /* by half a second */
+	cl_blk.knows_txdone = false; /* depending upon protocol */
+
+	/* Request channel for async comm. */
+	ch_async = mbox_request_channel(&cl_async);
+	/* Populate data packet */
+	/* ap.xxx = 123; etc */
+	/* Send async message to remote */
+	mbox_send_message(ch_async, &ap);
+
+	/* Continue to request channel for sync comm. */
+	ch_blk = mbox_request_channel(&cl_blk);
+	/* Populate data packet */
+	/* sp.abc = 123; etc */
+	/* Send message to remote in blocking mode */
+	mbox_send_message(ch_blk, &sp);
+	/* At this point 'sp' has been sent */
+
+	/* Now wait for async chan to be done */
+	wait_for_completion(&c_aysnc);
+}

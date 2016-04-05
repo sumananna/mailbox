@@ -392,6 +392,12 @@
 			>;
 		};
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox &mbox_loop>;
+		mbox-names = "mbox-loop";
+	};
 };
 
 &cpu_thermal {

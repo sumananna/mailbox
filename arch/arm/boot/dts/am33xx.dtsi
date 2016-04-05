@@ -441,6 +441,12 @@
 			dma-names = "tx", "rx";
 		};
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox &mbox_loop>;
+		mbox-names = "mbox-loop";
+	};
 };
 
 #include "am33xx-l4.dtsi"

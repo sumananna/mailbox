@@ -718,6 +718,21 @@
 		#include "dra7-iva-thermal.dtsi"
 	};
 
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox1 &mbox1_loop>, <&mailbox2 &mbox2_loop>,
+			 <&mailbox3 &mbox3_loop>, <&mailbox4 &mbox4_loop>,
+			 <&mailbox5 &mbox5_loop>, <&mailbox6 &mbox6_loop>,
+			 <&mailbox7 &mbox7_loop>, <&mailbox8 &mbox8_loop>,
+			 <&mailbox9 &mbox9_loop>, <&mailbox10 &mbox10_loop>,
+			 <&mailbox11 &mbox11_loop>, <&mailbox12 &mbox12_loop>,
+			 <&mailbox13 &mbox13_loop>;
+		mbox-names = "mbox1-loop", "mbox2-loop", "mbox3-loop",
+			     "mbox4-loop", "mbox5-loop", "mbox6-loop",
+			     "mbox7-loop", "mbox8-loop", "mbox9-loop",
+			     "mbox10-loop", "mbox11-loop", "mbox12-loop",
+			     "mbox13-loop";
+	};
 };
 
 &cpu_thermal {

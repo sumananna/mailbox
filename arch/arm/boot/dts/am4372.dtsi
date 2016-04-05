@@ -349,6 +349,12 @@
 			};
 		};
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox &mbox_loop>;
+		mbox-names = "mbox-loop";
+	};
 };
 
 #include "am437x-l4.dtsi"

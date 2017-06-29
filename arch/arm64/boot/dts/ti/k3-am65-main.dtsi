@@ -433,6 +433,11 @@
 				ti,mbox-tx = <1 0 0>;
 				ti,mbox-rx = <0 0 0>;
 			};
+
+			mbox_loop0: mbox-loop0 {
+				ti,mbox-tx = <15 0 0>;
+				ti,mbox-rx = <15 0 0>;
+			};
 		};
 
 		mailbox0_cluster1: mailbox@31f81000 {
@@ -447,6 +452,11 @@
 			mbox_mcu_r5fss0_core1: mbox-mcu-r5fss0-core1 {
 				ti,mbox-tx = <1 0 0>;
 				ti,mbox-rx = <0 0 0>;
+			};
+
+			mbox_loop1: mbox-loop1 {
+				ti,mbox-tx = <15 0 0>;
+				ti,mbox-rx = <15 0 0>;
 			};
 		};
 

@@ -53,6 +53,11 @@
 			gpios = <&wkup_gpio0 27 GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	hwspin_test {
+		compatible = "ti,am654-hwspinlock-test";
+		hwlocks = <&hwspinlock 3>, <&hwspinlock 251>;
+	};
 };
 
 &wkup_pmx0 {

@@ -17,6 +17,17 @@
 		compatible = "ti,am654-hwspinlock-test";
 		hwlocks = <&hwspinlock 3>, <&hwspinlock 251>;
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox0_cluster0 &mbox_loop0>,
+			 <&mailbox0_cluster1 &mbox_loop1>,
+			 <&mailbox0_cluster2 &mbox_loop2>,
+			 <&mailbox0_cluster3 &mbox_loop3>,
+			 <&mailbox0_cluster4 &mbox_loop4>;
+		mbox-names = "mbox-loop0", "mbox-loop1", "mbox-loop2",
+			     "mbox-loop3", "mbox-loop4";
+	};
 };
 
 &wkup_uart0 {

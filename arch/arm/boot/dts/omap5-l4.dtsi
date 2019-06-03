@@ -623,6 +623,10 @@
 					ti,mbox-tx = <3 0 0>;
 					ti,mbox-rx = <2 0 0>;
 				};
+				mbox_loop: mbox-loop {
+					ti,mbox-tx = <4 0 0>;
+					ti,mbox-rx = <4 0 0>;
+				};
 			};
 		};
 

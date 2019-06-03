@@ -467,6 +467,10 @@
 				ti,mbox-num-users = <3>;
 				ti,mbox-num-fifos = <8>;
 				status = "disabled";
+				mbox1_loop: mbox1-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3268,6 +3272,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox13_loop: mbox13-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3597,6 +3605,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox2_loop: mbox2-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3628,6 +3640,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox3_loop: mbox3-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3659,6 +3675,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox4_loop: mbox4-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3690,6 +3710,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox5_loop: mbox5-loop {
+					ti,mbox-tx = <0 0 0>;
+					ti,mbox-rx = <0 0 0>;
+				};
 			};
 		};
 
@@ -3721,6 +3745,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox6_loop: mbox6-loop {
+					ti,mbox-tx = <0 0 0>;
+					ti,mbox-rx = <0 0 0>;
+				};
 			};
 		};
 
@@ -3752,6 +3780,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox7_loop: mbox7-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3783,6 +3815,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox8_loop: mbox8-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3902,6 +3938,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox9_loop: mbox9-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3933,6 +3973,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox10_loop: mbox10-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3964,6 +4008,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox11_loop: mbox11-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 
@@ -3995,6 +4043,10 @@
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
 				status = "disabled";
+				mbox12_loop: mbox12-loop {
+					ti,mbox-tx = <6 0 0>;
+					ti,mbox-rx = <6 0 0>;
+				};
 			};
 		};
 

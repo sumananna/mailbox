@@ -466,7 +466,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <3>;
 				ti,mbox-num-fifos = <8>;
-				status = "disabled";
+				status = "okay";
 				mbox1_loop: mbox1-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3271,7 +3271,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox13_loop: mbox13-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3604,7 +3604,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox2_loop: mbox2-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3639,7 +3639,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox3_loop: mbox3-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3674,7 +3674,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox4_loop: mbox4-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3709,7 +3709,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox5_loop: mbox5-loop {
 					ti,mbox-tx = <0 0 0>;
 					ti,mbox-rx = <0 0 0>;
@@ -3744,7 +3744,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox6_loop: mbox6-loop {
 					ti,mbox-tx = <0 0 0>;
 					ti,mbox-rx = <0 0 0>;
@@ -3779,7 +3779,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox7_loop: mbox7-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3814,7 +3814,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox8_loop: mbox8-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3937,7 +3937,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox9_loop: mbox9-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -3972,7 +3972,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox10_loop: mbox10-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -4007,7 +4007,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox11_loop: mbox11-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;
@@ -4042,7 +4042,7 @@
 				#mbox-cells = <1>;
 				ti,mbox-num-users = <4>;
 				ti,mbox-num-fifos = <12>;
-				status = "disabled";
+				status = "okay";
 				mbox12_loop: mbox12-loop {
 					ti,mbox-tx = <6 0 0>;
 					ti,mbox-rx = <6 0 0>;

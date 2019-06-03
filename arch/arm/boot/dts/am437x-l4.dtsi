@@ -1178,6 +1178,10 @@
 					ti,mbox-tx = <0 0 0>;
 					ti,mbox-rx = <0 0 3>;
 				};
+				mbox_loop: mbox-loop {
+					ti,mbox-tx = <5 0 0>;
+					ti,mbox-rx = <5 0 0>;
+				};
 			};
 		};
 

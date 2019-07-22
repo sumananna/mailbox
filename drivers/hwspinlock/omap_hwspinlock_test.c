@@ -26,7 +26,7 @@ struct hwspinlock_data {
 	const unsigned int max_locks;
 };
 
-static int hwspin_lock_test(struct hwspinlock *hwlock, bool unlock)
+static int hwspin_lock_test(struct hwspinlock *hwlock)
 {
 	int i;
 	int ret;
@@ -61,8 +61,7 @@ static int hwspin_lock_test(struct hwspinlock *hwlock, bool unlock)
 			return -EINVAL;
 		}
 
-		if (unlock)
-			hwspin_unlock(hwlock);
+		hwspin_unlock(hwlock);
 	}
 
 	return 0;
@@ -83,7 +82,7 @@ static int hwspin_lock_test_all_locks(unsigned int max_locks)
 			continue;
 		}
 
-		ret1 = hwspin_lock_test(hwlock, true);
+		ret1 = hwspin_lock_test(hwlock);
 		if (ret1) {
 			pr_err("hwspinlock tests failed on lock %d\n", i);
 			ret = ret1;
@@ -148,19 +147,19 @@ static int hwspin_lock_test_all_phandle_locks(unsigned int max_locks)
 			continue;
 		}
 
-		ret1 = hwspin_lock_test(hwlock, false);
+		ret1 = hwspin_lock_test(hwlock);
 		if (ret1) {
 			pr_err("hwspinlock test failed on DT lock %d, ret = %d\n",
 			       hwspin_lock_get_id(hwlock), ret1);
 			ret = ret1;
 		}
 
-		/*ret1 = hwspin_lock_free(hwlock);
+		ret1 = hwspin_lock_free(hwlock);
 		if (ret1) {
 			pr_err("hwspin_lock_free failed on lock %d\n",
 			       hwspin_lock_get_id(hwlock));
 			ret = ret1;
-		}*/
+		}
 	}
 
 	return ret;
